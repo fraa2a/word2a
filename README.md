@@ -6,7 +6,6 @@ A simple terminal **word game** built with RataTUI, based on a .txt dictionary f
 
 Run with `cargo run --release`. Press `Enter` to submit, `Backspace` to delete, and `Esc` to quit.
 
-Built with:
 ![badge](https://shieldcn.dev/badge/Rust.svg?theme=orange&logo=rust&logoColor=ffffff)
 ![badge](https://shieldcn.dev/badge/RataTUI.svg?theme=zinc&logo=ratatui&logoColor=ffffff)
 
