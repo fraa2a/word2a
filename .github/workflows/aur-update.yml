@@ -1,0 +1,49 @@
+name: Update AUR
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  update-aur:
+    if: github.event.release.tag_name != 'v0.1.0'
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packaging tools
+        run: pacman -Syu --noconfirm --needed base-devel pacman-contrib git openssh curl
+      - name: Configure AUR SSH access
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+      - name: Trust AUR host key
+        run: |
+          install -d -m 700 ~/.ssh
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+      - name: Update package and push to AUR
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git clone ssh://aur@aur.archlinux.org/word2a.git aur
+          cd aur
+          sed -i "s/^pkgver=.*/pkgver=$version/" PKGBUILD
+          sed -i 's/^pkgrel=.*/pkgrel=1/' PKGBUILD
+          updpkgsums
+          makepkg --printsrcinfo > .SRCINFO
+          if git diff --quiet -- PKGBUILD .SRCINFO; then
+            echo "AUR package is already at $version"
+            exit 0
+          fi
+          git config user.name "$GH_ACTOR"
+          git config user.email "$GH_ACTOR@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to $version"
+          git push origin master
